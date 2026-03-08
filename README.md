@@ -1,4 +1,4 @@
-# BharatSeva+ Platform
+# BharatSeva+ Platform  [![Deploy](https://github.com/BharatSeva/core/actions/workflows/deploy.yaml/badge.svg?branch=main)](https://github.com/BharatSeva/core/actions/workflows/deploy.yaml)
 
 Central platform repository for **BharatSeva+**, containing all core services managed as Git submodules.  
 This repository acts as the central control system for managing, updating, and organizing all modules.
