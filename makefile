@@ -14,6 +14,8 @@ stop:
 ################ Utility Targets ################
 init-submodules:
 	@git submodule update --init --recursive --force
+	@git submodule foreach git checkout main
+	@git submodule foreach git pull origin main
 
 update-submodule:
 	@git submodule update --remote --merge --recursive

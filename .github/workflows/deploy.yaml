@@ -26,74 +26,29 @@ jobs:
             set -e
             BASE_DIR="/home/${{ secrets.USERNAME }}/core"
 
-            # ─── First Time Setup ─────────────────────────────────
-            if [ ! -d "$BASE_DIR/.git" ]; then
-              echo ">>> Fresh install — cloning repo with submodules..."
-              git clone --recurse-submodules https://github.com/BharatSeva/core.git "$BASE_DIR"
+            # ─── Stop existing services ───────────────────────────
+            if [ -d "$BASE_DIR/.git" ]; then
+              echo ">>> Stopping existing services..."
               cd "$BASE_DIR"
-              make init
-              make status
-              exit 0
+              docker compose down || true
             fi
 
-            # ─── Existing Install — Pull Latest Changes ───────────
-            echo ">>> Existing install found — pulling latest changes..."
+            # ─── Fresh clone every time ───────────────────────────
+            rm -rf "$BASE_DIR"
+            git clone --recurse-submodules https://github.com/BharatSeva/core.git "$BASE_DIR"
             cd "$BASE_DIR"
 
-            # Pull main repo changes
-            git fetch origin main
-            LOCAL=$(git rev-parse HEAD)
-            REMOTE=$(git rev-parse origin/main)
+            # ─── Write .env files ─────────────────────────────────
+            cat > "$BASE_DIR/Client-Interface/.env.production" <<EOL
+            REACT_APP_CLIENT_API_URL=http://${{ secrets.HOST }}/api/v1/user
+            EOL
 
-            if [ "$LOCAL" = "$REMOTE" ]; then
-              echo ">>> Main repo is up to date. Checking submodules..."
-            else
-              echo ">>> Main repo has changes — pulling..."
-              git pull origin main
-            fi
+            cat > "$BASE_DIR/healthcare-interface/.env.production" <<EOL
+            REACT_APP_HEALTHCARE_API_URL=http://${{ secrets.HOST }}/api/v1/healthcare
+            EOL
 
-            # ─── Pull Submodule Changes ───────────────────────────
-            echo ">>> Checking submodules for changes..."
-            SUBMODULE_CHANGED=false
+            # ─── Deploy ───────────────────────────────────────────
+            make init
 
-            git submodule update --init --recursive --remote
-
-            # Check if any submodule actually changed
-            if ! git diff --quiet HEAD; then
-              echo ">>> Submodule changes detected!"
-              git submodule foreach '
-                LOCAL=$(git rev-parse HEAD)
-                REMOTE=$(git rev-parse @{u} 2>/dev/null || echo "")
-                if [ -n "$REMOTE" ] && [ "$LOCAL" != "$REMOTE" ]; then
-                  echo "  → $name has new commits"
-                fi
-              '
-              SUBMODULE_CHANGED=true
-            else
-              echo ">>> No submodule changes."
-            fi
-
-            # ─── Rebuild Only What Changed ────────────────────────
-            MAIN_CHANGED=false
-            if [ "$LOCAL" != "$REMOTE" ]; then
-              MAIN_CHANGED=true
-            fi
-
-            if [ "$MAIN_CHANGED" = true ] || [ "$SUBMODULE_CHANGED" = true ]; then
-              echo ">>> Changes detected — restarting services..."
-              make stop || true
-              make start
-
-              # Rebuild frontend only if those submodules changed
-              if git diff --name-only HEAD@{1} HEAD | grep -q "Client-Interface\|healthcare-interface"; then
-                echo ">>> Frontend submodules changed — rebuilding..."
-                make rebuild
-                make reload-nginx
-              fi
-            else
-              echo ">>> No changes detected. Nothing to redeploy."
-            fi
-
-            # ─── Final Status ─────────────────────────────────────
             echo ">>> Deployment complete. Service status:"
             make status
