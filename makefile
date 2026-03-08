@@ -1,5 +1,9 @@
 ################ Main Targets ################
-init: init-submodules start rebuild-all
+init: check-system init-submodules rebuild start reload-nginx
+
+check-system:
+	@chmod +x check-system.sh
+	@./check-system.sh || (printf "\e[1;31mSystem check failed. Fix above errors and re-run make init.\e[0m\n" && exit 1)
 
 start:
 	@docker compose up --build -d
@@ -9,7 +13,7 @@ stop:
 
 ################ Utility Targets ################
 init-submodules:
-	@git submodule update --init --recursive
+	@git submodule update --init --recursive --force
 
 update-submodule:
 	@git submodule update --remote --merge --recursive
@@ -20,23 +24,19 @@ status:
 reload: reload-nginx reload-postgres
 
 reload-nginx:
-	@docker exec -it nginx nginx -s reload
+	@docker exec nginx nginx -s reload
 
 reload-postgres:
 	@docker compose down postgres -v
 	@docker compose up -d postgres
 
-rebuild-all: rebuild-client rebuild-healthcare
+rebuild: rebuild-client rebuild-healthcare
 
 rebuild-client:
-	@cd ./Client-Interface && npm i && npm run build
-	@docker exec -it nginx nginx -s reload
-	@cd ..
+	@cd ./Client-Interface && npm ci && npm run build
 
 rebuild-healthcare:
-	@cd ./healthcare-interface && npm i && npm run build
-	@docker exec -it nginx nginx -s reload
-	@cd ..
+	@cd ./healthcare-interface && npm ci && npm run build
 
 ################ Colors and Variables ################
 COLOR := "\e[1;36m%s\e[0m\n"

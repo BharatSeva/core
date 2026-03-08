@@ -236,8 +236,8 @@ services:
       - "80:80"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf
-      - ./healthcare-interface/static_healthcare:/usr/share/nginx/html/healthcare:ro
-      - ./Client-Interface/static_client:/usr/share/nginx/html/client:ro
+      - ./healthcare-interface/build:/usr/share/nginx/html/healthcare:ro
+      - ./Client-Interface/build:/usr/share/nginx/html/client:ro
     depends_on:
       - healthcare_server
       - client_server
